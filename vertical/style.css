@@ -1,0 +1,315 @@
+:root {
+  color-scheme: dark;
+  --bg: #000000;
+  --panel-bg: #121212;
+  --text: #e8e9ec;
+  --muted: #9599a3;
+  --accent: #5b8cff;
+  --panel-border: #262626;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+}
+
+header {
+  padding: 36px 24px 4px;
+  text-align: center;
+}
+
+header h1 {
+  margin: 0;
+  font-size: clamp(1.8rem, 4.2vw, 2.8rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  background: linear-gradient(120deg, var(--text) 40%, var(--accent) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.tagline {
+  margin: 4px 0 0;
+  font-size: clamp(0.8rem, 1.3vw, 0.95rem);
+  font-weight: 500;
+  color: var(--accent);
+  letter-spacing: 0.01em;
+}
+
+.view-nav {
+  margin: 10px 0 0;
+  font-size: 0.85rem;
+}
+
+.view-nav a {
+  color: var(--muted);
+  text-decoration: none;
+  border-bottom: 1px solid currentColor;
+}
+
+.view-nav a:hover {
+  color: var(--accent);
+}
+
+.viewer {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  gap: 56px;
+  max-width: 1300px;
+  width: 100%;
+  margin: 24px auto;
+  padding: 0 40px 24px;
+  height: min(66vh, 620px);
+}
+
+/* --- vertical scale bar --- */
+
+.vslider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 90px;
+}
+
+.vslider-track {
+  position: relative;
+  width: 8px;
+  height: 100%;
+  background: var(--panel-border);
+  border-radius: 4px;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.vslider-fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 50%;
+  background: var(--accent);
+  border-radius: 4px;
+  pointer-events: none;
+  opacity: 0.55;
+}
+
+.vslider-thumb {
+  position: absolute;
+  left: 50%;
+  bottom: 50%;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 3px solid var(--bg);
+  box-shadow: 0 0 0 1px var(--accent);
+  transform: translate(-50%, 50%);
+  pointer-events: none;
+}
+
+.scale-ticks {
+  position: absolute;
+  left: 100%;
+  top: 0;
+  bottom: 0;
+  width: 76px;
+  pointer-events: none;
+}
+
+.scale-tick {
+  position: absolute;
+  left: 8px;
+  transform: translateY(50%);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.scale-tick::before {
+  content: "";
+  width: 6px;
+  height: 1px;
+  background: var(--muted);
+}
+
+.scale-tick span {
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+/* --- stage (current image + metadata) --- */
+
+.stage-wrap {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.target-readout {
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 1.3rem;
+  margin-bottom: 14px;
+}
+
+.stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: visible;
+  perspective: 700px;
+}
+
+.slide {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  overflow-y: auto;
+  transition: transform 0.65s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.65s ease;
+  will-change: transform, opacity;
+}
+
+.slide.pos-center {
+  transform: translateZ(0) scale(1);
+  opacity: 1;
+}
+
+/* near viewer: bursting out of the screen (used for exit when scale increases,
+   and as the entry point when scale decreases) */
+.slide.pos-near {
+  transform: translateZ(650px) scale(2.1);
+  opacity: 0;
+}
+
+/* far from viewer: sinking into the depth of the screen (used for exit when
+   scale decreases, and as the entry point when scale increases) */
+.slide.pos-far {
+  transform: translateZ(-650px) scale(0.35);
+  opacity: 0;
+}
+
+.slide .image-col {
+  position: relative;
+  flex: 0 0 auto;
+  width: min(38vh, 380px);
+  aspect-ratio: 1 / 1;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #000;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+}
+
+.slide .image-col img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+}
+
+.length-badge {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  padding: 3px 9px;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 5px;
+  backdrop-filter: blur(2px);
+}
+
+.slide .meta-col {
+  flex: 0 0 auto;
+  width: min(38vh, 380px);
+  min-width: 0;
+}
+
+.meta-col .dataset-name {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 6px;
+  word-break: break-word;
+}
+
+.meta-col .ssbd-id {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin-bottom: 16px;
+}
+
+.meta-col .title {
+  font-size: 0.98rem;
+  color: var(--text);
+  line-height: 1.55;
+  margin-bottom: 16px;
+  max-width: 60ch;
+}
+
+.meta-col .contact {
+  color: var(--muted);
+  font-size: 0.88rem;
+  margin-bottom: 8px;
+}
+
+.meta-col .license {
+  display: inline-block;
+  padding: 2px 8px;
+  border: 1px solid var(--panel-border);
+  border-radius: 5px;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 1rem;
+  z-index: 10;
+}
+
+.loading-overlay.hidden {
+  display: none;
+}
+
+@media (max-width: 800px) {
+  .viewer {
+    gap: 24px;
+    padding: 0 16px 24px;
+  }
+  .vslider {
+    width: 56px;
+  }
+  .scale-ticks {
+    width: 50px;
+  }
+  .slide .image-col,
+  .slide .meta-col {
+    width: min(50vh, 70vw);
+  }
+}

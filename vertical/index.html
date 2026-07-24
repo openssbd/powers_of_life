@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Powers of Life — Vertical</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Powers of Life</h1>
+    <p class="tagline">A microscope's-eye journey through scale</p>
+    <p class="view-nav"><a href="../">← Back to the grid view</a></p>
+  </header>
+
+  <main class="viewer">
+    <div class="vslider" id="vslider">
+      <div class="vslider-track" id="vsliderTrack">
+        <div class="scale-ticks" id="scaleTicks"></div>
+        <div class="vslider-fill" id="vsliderFill"></div>
+        <div class="vslider-thumb" id="vsliderThumb"></div>
+      </div>
+    </div>
+
+    <div class="stage-wrap">
+      <div class="target-readout" id="targetReadout">-</div>
+      <div id="stage" class="stage"></div>
+    </div>
+  </main>
+
+  <div id="loadingOverlay" class="loading-overlay">loading…</div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Powers of Life</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Powers of Life</h1>
+    <p class="tagline">A microscope's-eye journey through scale</p>
+    <p class="subtitle">
+      Bioimaging data are shared via the <a href="https://ssbd.riken.jp/" target="_blank" rel="noopener">SSBD:database</a>.
+    </p>
+    <p class="view-nav"><a href="vertical/">Try the vertical 3D view →</a></p>
+  </header>
+
+  <section class="slider-section">
+    <div class="slider-readout">
+      <span id="targetWidthLabel">-</span>
+      <span class="count-label"><span id="shownCount">0</span> / <span id="totalCount">0</span> shown</span>
+    </div>
+    <div class="slider-row">
+      <span class="edge-label" id="minLabel">-</span>
+      <div class="slider-track-wrap">
+        <input type="range" id="widthSlider" min="0" max="1000" value="500">
+        <div class="scale-ticks" id="scaleTicks"></div>
+      </div>
+      <span class="edge-label" id="maxLabel">-</span>
+    </div>
+  </section>
+
+  <section id="grid" class="grid"></section>
+
+  <div id="loadingOverlay" class="loading-overlay">loading…</div>
+
+  <script src="app.js"></script>
+</body>
+</html>
