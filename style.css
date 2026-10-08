@@ -188,118 +188,150 @@ input[type="range"]::-moz-range-thumb {
   cursor: pointer;
 }
 
-.grid {
-  max-width: 1400px;
-  margin: 10px auto 14px;
-  padding: 0 24px;
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 12px;
-}
+/* --- stage (current image + metadata) --- */
 
-@media (max-width: 1000px) {
-  .grid { grid-template-columns: repeat(4, 1fr); }
-}
-
-@media (max-width: 640px) {
-  .grid { grid-template-columns: repeat(2, 1fr); }
-}
-
-.panel {
-  background: var(--panel-bg);
-  border: 1px solid var(--panel-border);
-  border-radius: 10px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  transition: transform 0.15s ease;
-}
-
-.panel:hover {
-  transform: translateY(-3px);
-}
-
-.panel .thumb-wrap {
+.stage {
   position: relative;
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  background: repeating-linear-gradient(
-    45deg, var(--panel-border), var(--panel-border) 10px, transparent 10px, transparent 20px
-  );
-  background-color: var(--panel-border);
+  max-width: 1100px;
+  height: min(62vh, 560px);
+  margin: 18px auto 24px;
+  padding: 0 24px;
+  overflow: hidden;
+  perspective: 1200px;
 }
 
-.panel img {
+.slide {
   position: absolute;
-  inset: 0;
+  inset: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 40px;
+  transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.7s ease, filter 0.7s ease;
+  will-change: transform, opacity;
+}
+
+.slide.pos-center {
+  transform: translateX(0) rotateY(0) scale(1);
+  opacity: 1;
+  filter: blur(0);
+}
+
+/* off to the right: entry point when scale increases, exit when it decreases */
+.slide.pos-right {
+  transform: translateX(70%) rotateY(-35deg) scale(0.8);
+  opacity: 0;
+  filter: blur(6px);
+}
+
+/* off to the left: exit when scale increases, entry point when it decreases */
+.slide.pos-left {
+  transform: translateX(-70%) rotateY(35deg) scale(0.8);
+  opacity: 0;
+  filter: blur(6px);
+}
+
+.slide .image-col {
+  position: relative;
+  flex: 0 0 auto;
+  width: min(52vh, 460px);
+  aspect-ratio: 1 / 1;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #000;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+}
+
+.slide .image-col img {
   width: 100%;
   height: 100%;
   object-fit: contain;
   background: #000;
-  opacity: 0;
-  transition: opacity 0.25s ease;
-}
-
-.panel img.loaded {
-  opacity: 1;
 }
 
 .length-badge {
   position: absolute;
-  right: 6px;
-  bottom: 6px;
-  padding: 2px 7px;
+  right: 8px;
+  bottom: 8px;
+  padding: 3px 9px;
   background: rgba(0, 0, 0, 0.65);
   color: #fff;
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   font-weight: 600;
-  border-radius: 4px;
-  pointer-events: none;
+  border-radius: 5px;
   backdrop-filter: blur(2px);
 }
 
-.panel .meta {
-  padding: 6px 8px 7px;
-  font-size: 0.64rem;
-  line-height: 1.25;
+.slide .meta-col {
+  flex: 0 1 380px;
+  min-width: 0;
 }
 
-.line-clamp-1 {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 1;
-  overflow: hidden;
-}
-
-.panel .dataset-name {
+.meta-col .dataset-name {
+  font-size: 1.5rem;
+  font-weight: 700;
   color: var(--text);
-  margin-top: 2px;
+  margin: 0 0 6px;
+  word-break: break-word;
 }
 
-.panel .ssbd-id {
+.meta-col .ssbd-id {
   color: var(--muted);
-  margin-top: 1px;
+  font-size: 0.85rem;
+  margin-bottom: 16px;
 }
 
-.panel .title {
+.meta-col .title {
+  font-size: 0.98rem;
+  color: var(--text);
+  line-height: 1.55;
+  margin-bottom: 16px;
+}
+
+.meta-col .contact {
   color: var(--muted);
-  margin-top: 3px;
-  font-style: italic;
+  font-size: 0.88rem;
+  margin-bottom: 8px;
 }
 
-.panel .contact {
-  color: var(--muted);
-  margin-top: 2px;
-}
-
-.panel .license {
+.meta-col .license {
   display: inline-block;
-  margin-top: 2px;
-  padding: 0 5px;
+  padding: 2px 8px;
   border: 1px solid var(--panel-border);
-  border-radius: 4px;
+  border-radius: 5px;
   color: var(--muted);
-  font-size: 0.6rem;
+  font-size: 0.75rem;
+}
+
+@media (max-width: 760px) {
+  .stage {
+    height: calc(min(100vw - 32px, 420px) + 300px);
+    padding: 0 16px;
+  }
+  .slide {
+    inset: 0 16px;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 16px;
+  }
+  .slide .image-col {
+    width: min(100%, 420px);
+  }
+  .slide .meta-col {
+    flex: 0 0 auto;
+    width: min(100%, 420px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slide {
+    transition: opacity 0.3s ease;
+  }
+  .slide.pos-left,
+  .slide.pos-right {
+    transform: none;
+    filter: none;
+  }
 }
 
 .loading-overlay {

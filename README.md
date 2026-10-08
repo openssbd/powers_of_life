@@ -7,8 +7,9 @@ tissues.
 
 Two views, sharing the same data:
 
-- **[Grid view](index.html)** — a slider with square thumbnail panels arranged
-  in a grid, nearest to the current scale.
+- **[Horizontal view](index.html)** — a horizontal scale slider; moving it
+  slides the current image/metadata off to one side while the next one
+  emerges from the other.
 - **[Vertical 3D view](vertical/)** — a vertical scale bar; moving it slides
   the current image/metadata away in depth (bursting toward the viewer or
   sinking into the screen) while the next one arrives.

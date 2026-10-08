@@ -1,12 +1,11 @@
-const PANEL_COUNT = 12; // 6 columns x 2 rows
 const SLIDER_MAX = 1000;
 
 const slider = document.getElementById("widthSlider");
 const targetWidthLabel = document.getElementById("targetWidthLabel");
 const minLabel = document.getElementById("minLabel");
 const maxLabel = document.getElementById("maxLabel");
-const grid = document.getElementById("grid");
-const shownCountEl = document.getElementById("shownCount");
+const stage = document.getElementById("stage");
+const currentPosEl = document.getElementById("currentPos");
 const totalCountEl = document.getElementById("totalCount");
 const loadingOverlay = document.getElementById("loadingOverlay");
 const scaleTicksEl = document.getElementById("scaleTicks");
@@ -14,44 +13,14 @@ const scaleTicksEl = document.getElementById("scaleTicks");
 let data = [];
 let logMin = 0;
 let logMax = 1;
+let boundaries = []; // slider-space values at the log-midpoint between consecutive items
+let currentIndex = -1;
+let currentSlideEl = null;
 
 function humanizeLength(um) {
   if (um < 1000) return `${um.toFixed(1)} µm`;
   if (um < 1_000_000) return `${(um / 1000).toFixed(2)} mm`;
   return `${(um / 1_000_000).toFixed(3)} m`;
-}
-
-// Slider position (0..SLIDER_MAX) maps log-linearly onto the crop-length range,
-// so equal slider steps are equal *multiplicative* steps in physical length.
-function sliderToLength(v) {
-  const t = v / SLIDER_MAX;
-  return Math.exp(logMin + t * (logMax - logMin));
-}
-
-// data is sorted ascending by crop_length_um; binary-search the insertion
-// point, then expand outward picking whichever neighbor is closer in log-space.
-function nearestByLength(target, n) {
-  let lo = 0, hi = data.length - 1;
-  while (lo < hi) {
-    const mid = (lo + hi) >> 1;
-    if (data[mid].crop_length_um < target) lo = mid + 1; else hi = mid;
-  }
-  const logTarget = Math.log(target);
-  let left = lo - 1, right = lo;
-  const result = [];
-  while (result.length < n && (left >= 0 || right < data.length)) {
-    const distLeft = left >= 0 ? Math.abs(Math.log(data[left].crop_length_um) - logTarget) : Infinity;
-    const distRight = right < data.length ? Math.abs(Math.log(data[right].crop_length_um) - logTarget) : Infinity;
-    if (distLeft <= distRight) {
-      result.push(data[left]);
-      left--;
-    } else {
-      result.push(data[right]);
-      right++;
-    }
-  }
-  result.sort((a, b) => a.crop_length_um - b.crop_length_um);
-  return result;
 }
 
 function trimNum(n) {
@@ -62,6 +31,45 @@ function formatTick(um) {
   if (um < 1000) return `${trimNum(um)} µm`;
   if (um < 1_000_000) return `${trimNum(um / 1000)} mm`;
   return `${trimNum(um / 1_000_000)} m`;
+}
+
+// Slider value (0..SLIDER_MAX, left=min, right=max) maps log-linearly onto the
+// physical crop-length range, so equal slider distance is equal
+// multiplicative distance in µm.
+function lengthToValue(len) {
+  return ((Math.log(len) - logMin) / (logMax - logMin)) * SLIDER_MAX;
+}
+
+// Some datasets share the exact same physical length; their log-midpoint is a
+// zero-width zone no slider position could land on. Enforce a minimum gap so
+// every item keeps a reachable sliver of the track.
+const MIN_GAP = 2;
+
+// One divider per gap between consecutive items, at the log-midpoint
+// (geometric mean) of their two physical lengths. Crossing a divider switches
+// the displayed image to its neighbor.
+function computeBoundaries() {
+  boundaries = [];
+  for (let i = 0; i < data.length - 1; i++) {
+    const midLength = Math.sqrt(data[i].crop_length_um * data[i + 1].crop_length_um);
+    boundaries.push(lengthToValue(midLength));
+  }
+  for (let i = 1; i < boundaries.length; i++) {
+    if (boundaries[i] < boundaries[i - 1] + MIN_GAP) {
+      boundaries[i] = boundaries[i - 1] + MIN_GAP;
+    }
+  }
+}
+
+// Index of the item whose zone contains this slider value -- i.e. how many
+// dividers sit at or below it.
+function indexForValue(value) {
+  let lo = 0, hi = boundaries.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (boundaries[mid] <= value) lo = mid + 1; else hi = mid;
+  }
+  return lo;
 }
 
 // Draw one tick per power of ten spanned by the data range, positioned by the
@@ -75,7 +83,7 @@ function renderScaleTicks() {
   for (let exp = startExp; exp <= endExp; exp++) {
     const value = Math.pow(10, exp);
     if (value < minLen || value > maxLen) continue;
-    const percent = ((Math.log(value) - logMin) / (logMax - logMin)) * 100;
+    const percent = (lengthToValue(value) / SLIDER_MAX) * 100;
     const tick = document.createElement("div");
     tick.className = "scale-tick";
     tick.style.left = `${percent}%`;
@@ -92,58 +100,109 @@ function escapeHtml(s) {
   return div.innerHTML;
 }
 
-function renderPanels(items) {
-  grid.innerHTML = "";
-  shownCountEl.textContent = items.length;
-  for (const item of items) {
-    const panel = document.createElement("div");
-    panel.className = "panel";
+function buildSlide(item) {
+  const slide = document.createElement("div");
+  slide.className = "slide";
 
-    const thumbWrap = document.createElement("div");
-    thumbWrap.className = "thumb-wrap";
+  const imageCol = document.createElement("div");
+  imageCol.className = "image-col";
 
-    const img = document.createElement("img");
-    img.loading = "lazy";
-    img.alt = item.dataset;
-    img.src = `thumbnails/${item.thumb}`;
-    img.onload = () => img.classList.add("loaded");
-    thumbWrap.appendChild(img);
+  const img = document.createElement("img");
+  img.alt = item.dataset;
+  img.src = `thumbnails/${item.thumb}`;
+  imageCol.appendChild(img);
 
-    const lengthBadge = document.createElement("div");
-    lengthBadge.className = "length-badge";
-    lengthBadge.textContent = humanizeLength(item.crop_length_um);
-    thumbWrap.appendChild(lengthBadge);
+  const badge = document.createElement("div");
+  badge.className = "length-badge";
+  badge.textContent = humanizeLength(item.crop_length_um);
+  imageCol.appendChild(badge);
 
-    const meta = document.createElement("div");
-    meta.className = "meta";
-    const contact = [item.contact_name, item.organization].filter(Boolean).join(" · ");
-    meta.innerHTML = `
-      <div class="dataset-name line-clamp-1">${escapeHtml(item.dataset)}</div>
-      <div class="ssbd-id line-clamp-1">${escapeHtml(item.ssbd_id)} · ${item.size_x}×${item.size_y}px</div>
-      ${item.title ? `<div class="title">${escapeHtml(item.title)}</div>` : ""}
-      ${contact ? `<div class="contact line-clamp-1">${escapeHtml(contact)}</div>` : ""}
-      ${item.license ? `<div class="license line-clamp-1">${escapeHtml(item.license)}</div>` : ""}
-    `;
+  const metaCol = document.createElement("div");
+  metaCol.className = "meta-col";
+  const contact = [item.contact_name, item.organization].filter(Boolean).join(" · ");
+  metaCol.innerHTML = `
+    <div class="dataset-name">${escapeHtml(item.dataset)}</div>
+    <div class="ssbd-id">${escapeHtml(item.ssbd_id)} · ${item.size_x}×${item.size_y}px</div>
+    ${item.title ? `<div class="title">${escapeHtml(item.title)}</div>` : ""}
+    ${contact ? `<div class="contact">${escapeHtml(contact)}</div>` : ""}
+    ${item.license ? `<div class="license">${escapeHtml(item.license)}</div>` : ""}
+  `;
 
-    panel.appendChild(thumbWrap);
-    panel.appendChild(meta);
-    grid.appendChild(panel);
+  slide.appendChild(imageCol);
+  slide.appendChild(metaCol);
+  return slide;
+}
+
+// direction "right" -> scale increases: current drifts off to the left and
+//                      fades; next emerges from the right.
+// direction "left"  -> scale decreases: current drifts off to the right; next
+//                      emerges from the left.
+function showItem(item, direction) {
+  // Clean up any stray slides left over from a very fast drag.
+  [...stage.children].forEach((el) => {
+    if (el !== currentSlideEl) el.remove();
+  });
+
+  const slide = buildSlide(item);
+
+  if (!currentSlideEl) {
+    slide.classList.add("pos-center");
+    stage.appendChild(slide);
+    currentSlideEl = slide;
+    return;
+  }
+
+  const enterClass = direction === "right" ? "pos-right" : "pos-left";
+  const exitClass = direction === "right" ? "pos-left" : "pos-right";
+
+  slide.classList.add(enterClass);
+  stage.appendChild(slide);
+  void slide.offsetWidth; // force reflow so the enter position applies before transitioning
+
+  const outgoing = currentSlideEl;
+  requestAnimationFrame(() => {
+    slide.classList.remove(enterClass);
+    slide.classList.add("pos-center");
+    outgoing.classList.remove("pos-center");
+    outgoing.classList.add(exitClass);
+  });
+  outgoing.addEventListener("transitionend", () => outgoing.remove(), { once: true });
+
+  currentSlideEl = slide;
+}
+
+function setValue(value) {
+  value = Math.min(SLIDER_MAX, Math.max(0, value));
+  slider.value = value;
+
+  const index = indexForValue(value);
+  const next = data[index];
+  targetWidthLabel.textContent = humanizeLength(next.crop_length_um);
+  currentPosEl.textContent = index + 1;
+
+  if (index !== currentIndex) {
+    const direction = currentIndex === -1 || index > currentIndex ? "right" : "left";
+    showItem(next, direction);
+    currentIndex = index;
   }
 }
 
-function update() {
-  const target = sliderToLength(Number(slider.value));
-  targetWidthLabel.textContent = humanizeLength(target);
-  const items = nearestByLength(target, PANEL_COUNT);
-  renderPanels(items);
+slider.addEventListener("input", () => setValue(Number(slider.value)));
+
+// Arrow keys step exactly one item at a time (jumping to the middle of that
+// item's zone), which reliably reaches every item even where dragging can't
+// land precisely on a narrow sliver.
+function stepIndex(delta) {
+  const newIndex = Math.min(data.length - 1, Math.max(0, currentIndex + delta));
+  const lo = newIndex === 0 ? 0 : boundaries[newIndex - 1];
+  const hi = newIndex === data.length - 1 ? SLIDER_MAX : boundaries[newIndex];
+  setValue((lo + hi) / 2);
 }
 
-let debounceTimer = null;
-slider.addEventListener("input", () => {
-  const target = sliderToLength(Number(slider.value));
-  targetWidthLabel.textContent = humanizeLength(target);
-  clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(update, 120);
+document.addEventListener("keydown", (e) => {
+  if (!data.length) return;
+  if (e.key === "ArrowRight" || e.key === "ArrowUp") { stepIndex(1); e.preventDefault(); }
+  if (e.key === "ArrowLeft" || e.key === "ArrowDown") { stepIndex(-1); e.preventDefault(); }
 });
 
 async function init() {
@@ -153,13 +212,14 @@ async function init() {
 
   logMin = Math.log(data[0].crop_length_um);
   logMax = Math.log(data[data.length - 1].crop_length_um);
+  computeBoundaries();
   minLabel.textContent = humanizeLength(data[0].crop_length_um);
   maxLabel.textContent = humanizeLength(data[data.length - 1].crop_length_um);
   totalCountEl.textContent = data.length;
   renderScaleTicks();
 
   loadingOverlay.classList.add("hidden");
-  update();
+  setValue(SLIDER_MAX / 2);
 }
 
 init();
