@@ -1,0 +1,206 @@
+/* Builds on ../style.css (header, loading overlay) and ../zoom/style.css
+   (viewport, zoom images, scale bar, metadata). Portrait, one screen tall. */
+
+html, body {
+  height: 100%;
+}
+
+body {
+  height: 100dvh;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+header {
+  padding: 14px 16px 2px;
+}
+
+header h1 {
+  font-size: 1.6rem;
+}
+
+.tagline {
+  font-size: 0.75rem;
+}
+
+.readout {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 10px 16px 8px;
+  font-size: 0.85rem;
+}
+
+#targetWidthLabel {
+  color: var(--accent);
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.count-label {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.phone-layout {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 10px;
+  padding: 0 8px 12px 16px;
+}
+
+.left-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.left-col .viewport {
+  width: 100%;
+  touch-action: none; /* pinch is handled in app.js */
+}
+
+.left-col .zoom-meta {
+  flex: 1;
+  min-height: 0;
+  width: auto;
+  overflow-y: auto;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.zoom-meta .dataset-name {
+  font-size: 1.15rem;
+}
+
+.zoom-meta .ssbd-id {
+  margin-bottom: 10px;
+}
+
+.zoom-meta .title {
+  font-size: 0.88rem;
+  line-height: 1.45;
+  margin-bottom: 10px;
+}
+
+.zoom-meta .contact {
+  font-size: 0.8rem;
+}
+
+/* --- vertical slider: thumb-reachable on the right edge --- */
+
+.vslider {
+  flex: 0 0 64px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.step-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--panel-border);
+  background: var(--panel-bg);
+  color: var(--text);
+  font-size: 0.9rem;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.step-btn:active {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+/* The track element is the whole column width, so it's easy to grab; the
+   visible rail sits at its right side, tick labels to its left. */
+.vslider-track {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  margin: 12px 0;
+  touch-action: none;
+  cursor: pointer;
+  outline: none;
+}
+
+.vslider-rail,
+.vslider-fill {
+  position: absolute;
+  right: 12px;
+  width: 6px;
+  border-radius: 3px;
+  pointer-events: none;
+}
+
+.vslider-rail {
+  top: 0;
+  bottom: 0;
+  background: var(--panel-border);
+}
+
+.vslider-fill {
+  bottom: 0;
+  background: var(--accent);
+  opacity: 0.55;
+}
+
+.vslider-thumb {
+  position: absolute;
+  right: 15px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 3px solid var(--bg);
+  box-shadow: 0 0 0 1px var(--accent);
+  transform: translate(50%, 50%);
+  pointer-events: none;
+}
+
+.vslider-track:focus-visible .vslider-thumb {
+  box-shadow: 0 0 0 3px var(--text);
+}
+
+.scale-ticks {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 22px;
+  height: auto;
+  pointer-events: none;
+}
+
+.scale-tick {
+  position: absolute;
+  right: 0;
+  left: auto;
+  top: auto;
+  transform: translateY(50%);
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: center;
+  gap: 3px;
+}
+
+.scale-tick::before {
+  width: 5px;
+  height: 1px;
+  background: var(--muted);
+}
+
+.scale-tick span {
+  margin: 0;
+  font-size: 0.58rem;
+}

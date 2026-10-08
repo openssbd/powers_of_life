@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>Powers of Life — Phone</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="../zoom/style.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Powers of Life</h1>
+    <p class="tagline">A microscope's-eye journey through scale</p>
+  </header>
+
+  <div class="readout">
+    <span>Field of view <span id="targetWidthLabel">-</span></span>
+    <span class="count-label"><span id="currentPos">0</span> / <span id="totalCount">0</span></span>
+  </div>
+
+  <main class="phone-layout">
+    <div class="left-col">
+      <div class="viewport" id="viewport">
+        <div class="scale-bar" id="scaleBar"><span id="scaleBarLabel"></span></div>
+      </div>
+      <div class="zoom-meta" id="meta"></div>
+    </div>
+
+    <div class="vslider">
+      <button class="step-btn" id="stepUp" aria-label="Next larger dataset">▲</button>
+      <div class="vslider-track" id="track" role="slider" tabindex="0"
+           aria-label="Field of view" aria-orientation="vertical">
+        <div class="scale-ticks" id="scaleTicks"></div>
+        <div class="vslider-rail"></div>
+        <div class="vslider-fill" id="fill"></div>
+        <div class="vslider-thumb" id="thumb"></div>
+      </div>
+      <button class="step-btn" id="stepDown" aria-label="Next smaller dataset">▼</button>
+    </div>
+  </main>
+
+  <div id="loadingOverlay" class="loading-overlay">loading…</div>
+
+  <script src="app.js"></script>
+</body>
+</html>

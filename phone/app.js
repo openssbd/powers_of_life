@@ -1,9 +1,11 @@
 const SLIDER_MAX = 1000;
 
-const slider = document.getElementById("widthSlider");
+const track = document.getElementById("track");
+const fillEl = document.getElementById("fill");
+const thumbEl = document.getElementById("thumb");
+const stepUpBtn = document.getElementById("stepUp");
+const stepDownBtn = document.getElementById("stepDown");
 const targetWidthLabel = document.getElementById("targetWidthLabel");
-const minLabel = document.getElementById("minLabel");
-const maxLabel = document.getElementById("maxLabel");
 const viewport = document.getElementById("viewport");
 const metaEl = document.getElementById("meta");
 const scaleBar = document.getElementById("scaleBar");
@@ -14,14 +16,14 @@ const loadingOverlay = document.getElementById("loadingOverlay");
 const scaleTicksEl = document.getElementById("scaleTicks");
 
 // Datasets whose widths differ by less than this (natural log) share one
-// zoom stop and are told apart only by the arrow keys.
+// zoom stop and are told apart only by the step buttons.
 const TIE = 0.02;
 // Between two neighboring stops, the crossfade happens over the middle part
 // of the zoom; near either stop only that stop's image is visible.
 const FADE_START = 0.2;
 const FADE_END = 0.8;
 // Fraction of the remaining distance to the target covered each frame, so
-// arrow-key jumps glide instead of snapping.
+// jumps glide instead of snapping.
 const EASE = 0.12;
 
 let data = [];
@@ -30,7 +32,7 @@ let logMax = 1;
 let targetLog = 0;  // natural log of the field-of-view width (µm) we're heading to
 let shownLog = 0;   // natural log of the width currently drawn
 let stops = [];      // [{ log, members: [data indices] }], ascending
-let pinnedIndex = -1; // dataset picked by the arrow keys among tied widths
+let pinnedIndex = -1; // dataset picked by the step buttons among tied widths
 let currentIndex = -1;
 let animating = false;
 const imageEls = new Map(); // data index -> element, created lazily
@@ -59,6 +61,7 @@ function valueToLog(v) {
   return logMin + (v / SLIDER_MAX) * (logMax - logMin);
 }
 
+// One tick per power of ten, bottom = smallest, top = largest.
 function renderScaleTicks() {
   scaleTicksEl.innerHTML = "";
   const minLen = data[0].crop_length_um;
@@ -70,7 +73,7 @@ function renderScaleTicks() {
     if (value < minLen || value > maxLen) continue;
     const tick = document.createElement("div");
     tick.className = "scale-tick";
-    tick.style.left = `${(logToValue(Math.log(value)) / SLIDER_MAX) * 100}%`;
+    tick.style.bottom = `${(logToValue(Math.log(value)) / SLIDER_MAX) * 100}%`;
     const label = document.createElement("span");
     label.textContent = formatTick(value);
     tick.appendChild(label);
@@ -107,8 +110,8 @@ function stopOf(index) {
   return stopBelow(data[index].log + TIE / 2);
 }
 
-// The dataset shown for a stop: the one the arrow keys picked, if it belongs
-// to this stop, otherwise the first.
+// The dataset shown for a stop: the one the step buttons picked, if it
+// belongs to this stop, otherwise the first.
 function representative(stop) {
   return stop.members.includes(pinnedIndex) ? pinnedIndex : stop.members[0];
 }
@@ -143,6 +146,7 @@ function renderMeta(item) {
     ${contact ? `<div class="contact">${escapeHtml(contact)}</div>` : ""}
     ${item.license ? `<div class="license">${escapeHtml(item.license)}</div>` : ""}
   `;
+  metaEl.scrollTop = 0;
   metaEl.classList.remove("fade-in");
   void metaEl.offsetWidth;
   metaEl.classList.add("fade-in");
@@ -216,22 +220,47 @@ function tick() {
   if (animating) requestAnimationFrame(tick);
 }
 
-function setTargetLog(l, { syncSlider = true } = {}) {
+function updateSliderVisual() {
+  const percent = (logToValue(targetLog) / SLIDER_MAX) * 100;
+  fillEl.style.height = `${percent}%`;
+  thumbEl.style.bottom = `${percent}%`;
+  track.setAttribute("aria-valuetext", humanizeLength(Math.exp(targetLog)));
+}
+
+function setTargetLog(l) {
   targetLog = Math.min(logMax, Math.max(logMin, l));
-  if (syncSlider) slider.value = logToValue(targetLog);
+  updateSliderVisual();
   if (!animating) {
     animating = true;
     requestAnimationFrame(tick);
   }
 }
 
-slider.addEventListener("input", () => {
-  pinnedIndex = -1;
-  setTargetLog(valueToLog(Number(slider.value)), { syncSlider: false });
-});
+// --- vertical slider: drag anywhere on the track, top = largest ---
 
-// Arrow keys step one dataset at a time: within a group of tied widths they
-// swap the image in place, otherwise they glide to the next width.
+function clientYToLog(clientY) {
+  const rect = track.getBoundingClientRect();
+  const frac = Math.min(1, Math.max(0, (rect.bottom - clientY) / rect.height));
+  return valueToLog(frac * SLIDER_MAX);
+}
+
+let dragging = false;
+track.addEventListener("pointerdown", (e) => {
+  dragging = true;
+  pinnedIndex = -1;
+  track.setPointerCapture(e.pointerId);
+  setTargetLog(clientYToLog(e.clientY));
+});
+track.addEventListener("pointermove", (e) => {
+  if (dragging) setTargetLog(clientYToLog(e.clientY));
+});
+track.addEventListener("pointerup", () => { dragging = false; });
+track.addEventListener("pointercancel", () => { dragging = false; });
+
+// --- step buttons: one dataset at a time ---
+
+// Within a group of tied widths this swaps the image in place, otherwise it
+// glides to the next width.
 function stepIndex(delta) {
   // Count from the last stepped-to dataset, so rapid steps add up even
   // before the zoom has caught up with them.
@@ -243,11 +272,53 @@ function stepIndex(delta) {
   setTargetLog(stops[stopOf(i)].log);
 }
 
-document.addEventListener("keydown", (e) => {
-  if (!data.length) return;
-  if (e.key === "ArrowRight" || e.key === "ArrowUp") { stepIndex(1); e.preventDefault(); }
-  if (e.key === "ArrowLeft" || e.key === "ArrowDown") { stepIndex(-1); e.preventDefault(); }
+stepUpBtn.addEventListener("click", () => stepIndex(1));
+stepDownBtn.addEventListener("click", () => stepIndex(-1));
+
+track.addEventListener("keydown", (e) => {
+  if (e.key === "ArrowUp" || e.key === "ArrowRight") { stepIndex(1); e.preventDefault(); }
+  if (e.key === "ArrowDown" || e.key === "ArrowLeft") { stepIndex(-1); e.preventDefault(); }
 });
+
+// --- pinch on the image: spreading fingers zooms in (smaller field of view) ---
+
+const pointers = new Map();
+let pinchStart = null; // { dist, log }
+
+function pinchDistance() {
+  const [a, b] = [...pointers.values()];
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+viewport.addEventListener("pointerdown", (e) => {
+  viewport.setPointerCapture(e.pointerId);
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pointers.size === 2) {
+    pinnedIndex = -1;
+    pinchStart = { dist: pinchDistance(), log: targetLog };
+  }
+});
+viewport.addEventListener("pointermove", (e) => {
+  if (!pointers.has(e.pointerId)) return;
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pinchStart && pointers.size === 2) {
+    const dist = pinchDistance();
+    if (dist > 0) setTargetLog(pinchStart.log - Math.log(dist / pinchStart.dist));
+  }
+});
+function endPointer(e) {
+  pointers.delete(e.pointerId);
+  if (pointers.size < 2) pinchStart = null;
+}
+viewport.addEventListener("pointerup", endPointer);
+viewport.addEventListener("pointercancel", endPointer);
+
+// Trackpad pinch / mouse wheel, for trying this view on a computer.
+viewport.addEventListener("wheel", (e) => {
+  e.preventDefault();
+  pinnedIndex = -1;
+  setTargetLog(targetLog + e.deltaY * 0.005);
+}, { passive: false });
 
 async function init() {
   const res = await fetch("../data.json");
@@ -258,8 +329,6 @@ async function init() {
   buildStops();
   logMin = data[0].log;
   logMax = data[data.length - 1].log;
-  minLabel.textContent = humanizeLength(data[0].crop_length_um);
-  maxLabel.textContent = humanizeLength(data[data.length - 1].crop_length_um);
   totalCountEl.textContent = data.length;
   renderScaleTicks();
 

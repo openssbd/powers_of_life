@@ -13,6 +13,9 @@ Two views, sharing the same data:
 - **[Zoom view](zoom/)** — the slider sets the field of view, and each image
   is drawn at its true size relative to it, so moving the slider zooms
   continuously from one dataset into the next, with a scale bar.
+- **[Phone view](phone/)** — the zoom view laid out for a phone held
+  upright: a thumb-reachable vertical slider on the right edge, step buttons,
+  and pinch-to-zoom on the image.
 - **[Vertical 3D view](vertical/)** — a vertical scale bar; moving it slides
   the current image/metadata away in depth (bursting toward the viewer or
   sinking into the screen) while the next one arrives.
